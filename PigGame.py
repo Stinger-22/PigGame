@@ -11,7 +11,7 @@ import pygame
 from sys import exit
 
 pygame.init()
-
+# pygame.display.init() -2mb ram
 
 class Game:
     def __init__(self):
@@ -97,7 +97,8 @@ class Sprite:
 
     def collision_line_x(self, sprite, speed, tile):
         if self.within_tile_x(sprite, speed, tile):
-            if sprite[1] < tile[1] < sprite[3] or sprite[1] < tile[3] < sprite[3]:
+            if tile[1] < sprite[1] < tile[3] or tile[1] < sprite[3] < tile[3] or \
+            (sprite[1] < tile[1] and sprite[3] > tile[3]):
                 self.speed[0] = 0
                 speed[0] = 0
                 return True  # speed[0] = 0
@@ -148,7 +149,7 @@ class Pig(Sprite):
         if not keys[pygame.K_SPACE] or not self.on_ground:
             self.speed[1] += self.gravity
 
-        self.collision_check(self.coords, self.speed, level.tileGroup)
+        self.collision_check(self.coords, self.speed, level.mergedtiles_group)
         self.pigRect.move_ip(self.speed[0], self.speed[1])
         game.playSurface.blit(self.pigSurface, self.pigRect)
 
@@ -173,9 +174,9 @@ class MapBuilder:
         self.map_loading()
 
     def map_loading(self):
-        self.tileGroup = []
-        self.append_coords = ()
-        self.current_coords = [self.x, self.y]
+        self.tiles_group = []
+        self.mergedtiles_group = []
+        self.add_tile = []
         map1 = ['0',
                 '0',
                 '0',
@@ -192,13 +193,13 @@ class MapBuilder:
                 '0001100000000000000000000000000000000011',
                 '0001100000000000000000000000000000000111',
                 '00000000000000000000000000000000000001',
-                '0000000000000000000000000000000000001',
+                '0000000000000011111100000000000000001',
                 '0001100000000000000000000001000000010011',
-                '0000000000000000000000000001',
-                '0000000000000000000000000001',
-                '0000000000000000000000000001011',
-                '0001100000000000010000000001000000000011',
-                '0001100000000000000000000001000000000011',
+                '0000001000000000000000000001',
+                '0000001000000000000000000001',
+                '0000001000000000000000000001011',
+                '0001101000000000010000000001000000000011',
+                '0001101000000000000000000001000000000011',
                 '1111111111111111111111111111111111111111']
         for row in map1:
             self.x = 0
@@ -206,16 +207,45 @@ class MapBuilder:
                 if tile == '0':
                     self.x += self.tile_size
                 elif tile == '1':
-                    self.append_coords = (self.x, self.y, self.x + self.tile_size, self.y + self.tile_size)
-                    self.tileGroup.append(self.append_coords)
+                    self.add_tile = [self.x, self.y, self.x + self.tile_size, self.y + self.tile_size]
+                    self.tiles_group.append(self.add_tile)
                     self.x += self.tile_size
             self.y += self.tile_size
+        self.to_merge_tiles_row = []
+        self.tiles_group_merging = self.tiles_group[:]
+        self.merge_tiles_row(self.tiles_group_merging)
 
     def map_drawing(self):
-        for tile in self.tileGroup:
+        for tile in self.tiles_group:
             self.tileSurface = pygame.Surface.get_rect(self.tile, topleft=(tile[0], tile[1]))
             game.playSurface.blit(self.tile, self.tileSurface)
 
+    def merge_tiles_row(self, tiles):
+        if tiles == []:
+            self.to_merge_tiles_row.sort(key=lambda tile: tile[0])
+            self.merge_tiles_column(self.to_merge_tiles_row)
+        else:
+            tile = tiles[0]
+            while len(tiles) > 1 and tile[2] == tiles[1][0] and tile[1] == tiles[1][1] and \
+            tile[3] == tiles[1][3]:
+                tile[2], tile[3] = tiles[1][2], tiles[1][3]
+                tiles.pop(1)
+            self.to_merge_tiles_row.append(tile)
+            tiles.pop(0)
+            self.merge_tiles_row(tiles)
+
+    def merge_tiles_column(self, tiles):
+        if tiles == []:
+            return
+        else:
+            tile = tiles[0]
+            while len(tiles) > 1 and tile[0] == tiles[1][0] and tile[2] == tiles[1][2] and \
+            tile[3] == tiles[1][1]:
+                tile[2], tile[3] = tiles[1][2], tiles[1][3]
+                tiles.pop(1)
+            self.mergedtiles_group.append(tile)
+            tiles.pop(0)
+            self.merge_tiles_column(tiles)
 
 game = Game()
 level = MapBuilder()
