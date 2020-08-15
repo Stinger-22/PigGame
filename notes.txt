@@ -10,8 +10,4 @@ def press_buttons(self):
                 if click.key == pygame.K_F4 and click.mod == pygame.KMOD_LALT:
                     pygame.quit()
                     exit()
-
 як в move
-
-3. Баг коли стрибаю впритик стіни і зажато вправо/вліво - вирішиться коли
-collision_check(tiles=mergedtiles_group)
