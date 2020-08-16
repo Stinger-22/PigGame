@@ -5,7 +5,7 @@ __author__ = 'XemyL'
 # Rect - зберігає координати
 # var = pygame.get_rect(Surface, corner or side=(x, y))
 # Surface.get_size - return tuple(width, height)
-# Surface.blit(surface, coords) - on this.blit(draw this, (x, y)
+# Surface.blit(surface, coords, (area=)) - on this.blit(draw this, (x, y), area=rect)
 
 import pygame
 from sys import exit
@@ -13,8 +13,10 @@ from sys import exit
 pygame.init()
 # pygame.display.init() -2mb ram
 
+
 class Game:
     def __init__(self):
+        self.playing = True
         self.event_queue = None
         self.window_width = pygame.display.Info().current_w
         self.window_height = pygame.display.Info().current_h
@@ -28,15 +30,13 @@ class Game:
         self.clock = pygame.time.Clock()
 
     def mainloop(self):
-        while 1:
+        while self.playing:
             self.clock.tick(60)
-            self.playSurface.blit(self.bg, (0, 0))
-            level.map_drawing()
             self.event_queue = pygame.event.get()
             self.press_buttons()
             pig.move()
 
-            self.playground.flip()
+            self.playground.update(pig.pigRect)
 
     # Button binds
     # keys = pygame.key.get_pressed() ???
@@ -61,58 +61,25 @@ class Sprite:
     def move(self):
         pass
 
-    def within_tile_x(self, sprite, speed, tile):
-        # if tile[0] <= sprite[2] + self.speed[0] <= tile[2] or tile[0] <= sprite[0] + self.speed[0] <= tile[2]:
-        if tile[0] < sprite[2] + speed[0] < tile[2] or tile[0] < sprite[0] + speed[0] < tile[2]:
-            return True
-        else:
-            return False
-
-    def within_tile_y_top(self, sprite, speed, tile):
-        if tile[1] < sprite[1] + speed[1] < tile[3]:
-            return True
-        else:
-            return False
-
-    def within_tile_y_bottom(self, sprite, speed, tile):
-        if tile[1] < sprite[3] + speed[1] < tile[3]:
-            return True
-        else:
-            return False
-
-    def collision_line_y_top(self, sprite, speed, tile):
-        if self.within_tile_y_top(sprite, speed, tile):
+    def collision_line_y(self, sprite, speed, tile):
+        if self.on_ground == False and tile[1] < sprite[1] + speed[1] < tile[3]:  # within tile y top
             if sprite[0] + speed[0] < tile[2] and sprite[2] + speed[0] > tile[0]:
-                return True  # speed[1] = 0
-            else:
-                return False
-
-    def collision_line_y_bottom(self, sprite, speed, tile):
-        if self.within_tile_y_bottom(sprite, speed, tile):
+                self.speed[1] = 0
+        if tile[1] < sprite[3] + speed[1] < tile[3]:  # within tile y bottom
             if sprite[0] + speed[0] < tile[2] and sprite[2] + speed[0] > tile[0]:
                 self.on_ground = True
-                return True  # speed[1] = 0
-            else:
-                return False
+                self.speed[1] = 0
 
     def collision_line_x(self, sprite, speed, tile):
-        if self.within_tile_x(sprite, speed, tile):
+        if tile[0] < sprite[2] + speed[0] < tile[2] or tile[0] < sprite[0] + speed[0] < tile[2]:  # within tile x
             if tile[1] < sprite[1] < tile[3] or tile[1] < sprite[3] < tile[3] or \
             (sprite[1] < tile[1] and sprite[3] > tile[3]):
                 self.speed[0] = 0
-                speed[0] = 0
-                return True  # speed[0] = 0
-            else:
-                return False
 
     def collision_check(self, sprite, speed, tiles):
         for tile in tiles:
-            if self.collision_line_x(sprite, speed, tile):
-                self.speed[0] = 0
-            if self.collision_line_y_top(sprite, speed, tile):
-                self.speed[1] = 0
-            if self.collision_line_y_bottom(sprite, speed, tile):
-                self.speed[1] = 0
+            self.collision_line_x(sprite, speed, tile)
+            self.collision_line_y(sprite, speed, tile)
 
 
 class Pig(Sprite):
@@ -124,7 +91,6 @@ class Pig(Sprite):
         self.pigRect = pygame.Surface.get_rect(self.pigSurface, bottomleft=(300, 600))
         self.size = self.pigSurface.get_size()
         game.playSurface.blit(self.pigSurface, self.pigRect)
-        game.playground.flip()
 
     def move(self):
         self.coords = [self.pigRect[0], self.pigRect[1], self.pigRect[0] + self.size[0], self.pigRect[1] + self.size[1]]
@@ -150,6 +116,7 @@ class Pig(Sprite):
             self.speed[1] += self.gravity
 
         self.collision_check(self.coords, self.speed, level.mergedtiles_group)
+        game.playSurface.blit(game.bg, (self.pigRect[0], self.pigRect[1]), area=self.pigRect)
         self.pigRect.move_ip(self.speed[0], self.speed[1])
         game.playSurface.blit(self.pigSurface, self.pigRect)
 
@@ -169,7 +136,7 @@ class Pig(Sprite):
 class MapBuilder:
     def __init__(self):
         self.tile_size = 32  # tile = square
-        self.tile = pygame.image.load('sprites/ground.png').convert()
+        self.tileSurface = pygame.image.load('sprites/ground.png').convert()
         self.x, self.y = 0, 0
         self.map_loading()
 
@@ -211,14 +178,15 @@ class MapBuilder:
                     self.tiles_group.append(self.add_tile)
                     self.x += self.tile_size
             self.y += self.tile_size
+        self.map_drawing()
         self.to_merge_tiles_row = []
         self.tiles_group_merging = self.tiles_group[:]
         self.merge_tiles_row(self.tiles_group_merging)
 
     def map_drawing(self):
         for tile in self.tiles_group:
-            self.tileSurface = pygame.Surface.get_rect(self.tile, topleft=(tile[0], tile[1]))
-            game.playSurface.blit(self.tile, self.tileSurface)
+            self.tileRect = pygame.Surface.get_rect(self.tileSurface, topleft=(tile[0], tile[1]))
+            game.playSurface.blit(self.tileSurface, self.tileRect)
 
     def merge_tiles_row(self, tiles):
         if tiles == []:
