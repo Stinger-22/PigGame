@@ -1,17 +1,1 @@
-1. На collision тільки 2 функції - collision_line_x i y
-!!Передаю пару разів однакові значення в параметрах функцій - зробити self.name - do something
-2. keys в mainloop і спробувати переписати
-def press_buttons(self):
-        for click in self.event_queue:
-            if click.type == pygame.QUIT:
-                pygame.quit()
-                exit()
-            elif click.type == pygame.KEYDOWN:
-                if click.key == pygame.K_F4 and click.mod == pygame.KMOD_LALT:
-                    pygame.quit()
-                    exit()
-
-як в move
-
-3. Баг коли стрибаю впритик стіни і зажато вправо/вліво - вирішиться коли
-collision_check(tiles=mergedtiles_group)
+1. ??Передаю пару разів однакові значення в параметрах функцій - зробити self.name - do something
