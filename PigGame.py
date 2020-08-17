@@ -7,6 +7,10 @@ __author__ = 'XemyL'
 # Surface.get_size - return tuple(width, height)
 # Surface.blit(surface, coords, (area=)) - on this.blit(draw this, (x, y), area=rect)
 
+# event: ACTIVEEVENT: gain, state
+# Event(32768-ActiveEvent {'gain': 1, 'state': 2, 'window': None}
+# what is "gain" and "state"
+
 import pygame
 from sys import exit
 
@@ -39,7 +43,6 @@ class Game:
             self.playground.update(pig.pigRect)
 
     # Button binds
-    # keys = pygame.key.get_pressed() ???
     def press_buttons(self):
         for click in self.event_queue:
             if click.type == pygame.QUIT:
@@ -49,6 +52,12 @@ class Game:
                 if click.key == pygame.K_F4 and click.mod == pygame.KMOD_LALT:
                     pygame.quit()
                     exit()
+            if click.type == pygame.ACTIVEEVENT:  # Alt+Tab redrawing
+                self.playSurface.blit(self.bg, (0, 0))
+                level.map_drawing()
+                pig.move()
+                game.playSurface.blit(pig.pigSurface, (pig.pigRect[0], pig.pigRect[1]))
+                self.playground.update()
 
 
 class Sprite:
@@ -62,18 +71,20 @@ class Sprite:
         pass
 
     def collision_line_y(self, sprite, speed, tile):
-        if self.on_ground == False and tile[1] < sprite[1] + speed[1] < tile[3]:  # within tile y top
+        if tile[1] < sprite[1] + speed[1] < tile[3]:  # within tile y top
             if sprite[0] + speed[0] < tile[2] and sprite[2] + speed[0] > tile[0]:
                 self.speed[1] = 0
         if tile[1] < sprite[3] + speed[1] < tile[3]:  # within tile y bottom
             if sprite[0] + speed[0] < tile[2] and sprite[2] + speed[0] > tile[0]:
                 self.on_ground = True
                 self.speed[1] = 0
+            if self.speed[1] > 0:
+                self.on_ground = False
 
     def collision_line_x(self, sprite, speed, tile):
         if tile[0] < sprite[2] + speed[0] < tile[2] or tile[0] < sprite[0] + speed[0] < tile[2]:  # within tile x
             if tile[1] < sprite[1] < tile[3] or tile[1] < sprite[3] < tile[3] or \
-            (sprite[1] < tile[1] and sprite[3] > tile[3]):
+            (sprite[1] <= tile[1] and sprite[3] >= tile[3]):  #
                 self.speed[0] = 0
 
     def collision_check(self, sprite, speed, tiles):
@@ -103,7 +114,7 @@ class Pig(Sprite):
         if self.within_left_border():
             if keys[pygame.K_LEFT] and self.speed[0] > -10:
                 self.speed[0] -= 1
-        if keys[pygame.K_SPACE] and self.on_ground:
+        if keys[pygame.K_SPACE] and self.on_ground == True:
             self.on_ground = False
             self.speed[1] = -15
         # Decrease speed
@@ -112,7 +123,7 @@ class Pig(Sprite):
                 self.speed[0] -= 1
             if self.speed[0] < 0:
                 self.speed[0] += 1
-        if not keys[pygame.K_SPACE] or not self.on_ground:
+        if not keys[pygame.K_SPACE] or self.on_ground == False:
             self.speed[1] += self.gravity
 
         self.collision_check(self.coords, self.speed, level.mergedtiles_group)
@@ -160,7 +171,7 @@ class MapBuilder:
                 '0001100000000000000000000000000000000011',
                 '0001100000000000000000000000000000000111',
                 '00000000000000000000000000000000000001',
-                '0000000000000011111100000000000000001',
+                '0000000000000001111100000000000000001',
                 '0001100000000000000000000001000000010011',
                 '0000001000000000000000000001',
                 '0000001000000000000000000001',
