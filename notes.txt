@@ -1,1 +1,3 @@
-1. ??Передаю пару разів однакові значення в параметрах функцій - зробити self.name - do something
+Next update:
+1. Button 'Quit'
+2. Game Over
