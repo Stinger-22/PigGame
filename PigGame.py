@@ -1,9 +1,11 @@
 __author__ = 'XemyL'
 # -*- coding: utf-8 -*-
 
-# Surface - на ньому малюється
-# Rect - зберігає координати
-# var = pygame.get_rect(Surface, corner or side=(x, y))
+# Surface (width, height) - drawing on it
+# Rect (top, left, width, height) - save coords and size
+# pygame.get_rect(Surface, corner or side=(x, y)) - return Rect object
+
+# Surface.get_rect - return Rect object
 # Surface.get_size - return tuple(width, height)
 # Surface.blit(surface, coords, (area=)) - on this.blit(draw this, (x, y), area=rect)
 
@@ -11,36 +13,111 @@ __author__ = 'XemyL'
 # Event(32768-ActiveEvent {'gain': 1, 'state': 2, 'window': None}
 # what is "gain" and "state"
 
+# pygame.display.setmode(size=width, height) - not any size
+
 import pygame
 from sys import exit
+from os import listdir
+from json import load
 
 pygame.init()
 # pygame.display.init() -2mb ram
 
 
-class Game:
+class MainGame:
     def __init__(self):
-        self.playing = True
-        self.event_queue = None
-        self.window_width = pygame.display.Info().current_w
-        self.window_height = pygame.display.Info().current_h
+        # Create useful variables
+        self.playing = 'Menu' # String - menu. True - playing.
+        self.event_queue = []
 
-        # Initialize window
-        self.playground = pygame.display
-        self.playSurface = self.playground.set_mode(size=(self.window_width, self.window_height), flags=pygame.FULLSCREEN, depth=32)
-        self.bg = pygame.image.load('sprites/bg.png').convert()
-        self.playSurface.blit(self.bg, (0, 0))
-        self.playground.set_caption('Pig Game')
+        self.window = pygame.display
+        self.window_width = self.window.Info().current_w
+        self.window_height = self.window.Info().current_h
+
         self.clock = pygame.time.Clock()
+        self.screenSurface = self.window.set_mode\
+        (size=(self.window_width, self.window_height), flags=pygame.FULLSCREEN, depth=32)
+        self.window.set_caption('Pig Game')
+
+        # Load textures
+        self.textures = {}  # {name: texture (surface)}
+        self.load_textures()
+
+        self.choosen_character = 'pig'
+
+        # Create buttons rects
+        self.button_startRect = self.textures['start_button'].get_rect \
+        (topleft=(((self.window_width - self.textures['start_button'].get_width()) / 2),
+                  ((self.window_height - self.textures['start_button'].get_height()) / 2) - self.textures['start_button'].get_height()))
+        self.button_choose_animalRect = self.textures['choose_animal_button'].get_rect \
+        (topleft=(((self.window_width - self.textures['choose_animal_button'].get_width()) / 2),
+                  (self.window_height / 2) + 50))
+        self.button_exitRect = self.textures['exit_button'].get_rect \
+        (topleft=(((self.window_width - self.textures['exit_button'].get_width()) / 2),
+                  (self.window_height / 2) + 150))
+        self.button_backRect = self.textures['back_button'].get_rect \
+        (topleft=(((self.window_width - self.textures['back_button'].get_width()) / 2),
+                  (self.window_height - 200)))
+        self.choose_animal_frameRect = self.textures['choose_animal_frame'].get_rect \
+        (topleft=(((self.window_width - self.textures['choose_animal_frame'].get_width()) / 2),
+                  ((self.window_height - self.textures['choose_animal_frame'].get_height()) / 2)))
+
+        self.main_menu()
+
+    def __delattr__(self, item):
+        # Game Over
+        if item == 'player':
+            self.game_overRect = self.textures['game_over'].get_rect \
+            (topleft=(((self.window_width - self.textures['game_over'].get_width()) / 2),
+                  ((self.window_height - self.textures['game_over'].get_height()) / 2)))
+            self.screenSurface.blit(self.textures['game_over'], self.game_overRect)
+            self.window.update(self.game_overRect)
+            self.playing = 'Game Over'
+
+    def load_textures(self):
+        for texture in listdir(path='sprites'):
+            # Pycharm can't recognize f-strings -> highlights like error
+            self.textures[texture[:len(texture) - 4]] = pygame.image.load(f'sprites/{texture}').convert_alpha()
+
+    # Create playable characters
+    def load_characters(self):
+        self.characters_list = []
+        self.characters_dict = {
+            'pig': PlayableCharacter(game.textures['pig'], -15, 1, level.start_pos, 10),
+            'goat': PlayableCharacter(game.textures['goat'], -17, 1, level.start_pos, 8)
+        }
+        for character in self.characters_dict:
+            self.characters_list.append(character)
+
+    def main_menu(self):
+        self.screenSurface.blit(self.textures['bg'], (0, 0))
+        self.screenSurface.blit(self.textures['start_button'], self.button_startRect)
+        self.screenSurface.blit(self.textures['choose_animal_button'], self.button_choose_animalRect)
+        self.screenSurface.blit(self.textures['exit_button'], self.button_exitRect)
+
+    def choose_animal_menu(self):
+        self.screenSurface.blit(self.textures['bg'], (0, 0))
+        self.screenSurface.blit(self.textures['back_button'], self.button_backRect)
+        self.screenSurface.blit(self.textures['choose_animal_frame'], self.choose_animal_frameRect)
+        self.screenSurface.blit(self.textures[self.choosen_character],
+                                dest=(((self.window_width - self.textures[self.choosen_character].get_width()) / 2),
+                                     ((self.window_height - self.textures[self.choosen_character].get_height()) / 2)))
 
     def mainloop(self):
-        while self.playing:
-            self.clock.tick(60)
+        while 1:
+            self.clock.tick(60) # N iterations per second
             self.event_queue = pygame.event.get()
             self.press_buttons()
-            pig.move()
-
-            self.playground.update(pig.pigRect)
+            if self.playing == True:
+                self.player.move()
+                self.redraw_screen()
+                self.window.update(self.player.Rect_on_screen)
+                # Game Over if character fell out
+                if self.player.Rect_on_screen[1] > game.window_height:
+                    game.playing = 'menu'
+                    del game.player
+            if self.playing != True:
+                self.window.update()
 
     # Button binds
     def press_buttons(self):
@@ -52,134 +129,223 @@ class Game:
                 if click.key == pygame.K_F4 and click.mod == pygame.KMOD_LALT:
                     pygame.quit()
                     exit()
-            if click.type == pygame.ACTIVEEVENT:  # Alt+Tab redrawing
-                self.playSurface.blit(self.bg, (0, 0))
+
+            # Alt+Tab redrawing
+            if self.playing == True and click.type == pygame.ACTIVEEVENT:
+                self.screenSurface.blit(self.textures['bg'], (0, 0))
                 level.map_drawing()
-                pig.move()
-                game.playSurface.blit(pig.pigSurface, (pig.pigRect[0], pig.pigRect[1]))
-                self.playground.update()
+                self.player.move()
+                self.screenSurface.blit(self.textures[self.choosen_character], (self.player.Rect[0], self.player.Rect[1]))
+                self.window.update()
+            elif self.playing != True and click.type == pygame.ACTIVEEVENT:
+                self.playing = 'Menu'
+                self.main_menu()
+                self.window.update()
+
+            # Button "Start"
+            if self.playing == 'Menu' and click.type == pygame.MOUSEMOTION:
+                if self.button_startRect[0] + self.button_startRect[2] > click.pos[0] > self.button_startRect[0] and \
+                    self.button_startRect[1] + self.button_startRect[3] > click.pos[1] > self.button_startRect[1]:
+                    self.screenSurface.blit(self.textures['start_button_hovered'], self.button_startRect)
+                else:
+                    self.screenSurface.blit(self.textures['start_button'], self.button_startRect)
+            if self.playing == 'Menu' and click.type == pygame.MOUSEBUTTONDOWN and click.button == 1:
+                if self.button_startRect[0] + self.button_startRect[2] > click.pos[0] > self.button_startRect[0] and \
+                    self.button_startRect[1] + self.button_startRect[3] > click.pos[1] > self.button_startRect[1]:
+                        self.playing = True
+                        self.start()
+
+            # Button "Quit"
+            if self.playing == 'Menu' and click.type == pygame.MOUSEMOTION:
+                if self.button_exitRect[0] + self.button_exitRect[2] > click.pos[0] > self.button_exitRect[0] and \
+                    self.button_exitRect[1] + self.button_exitRect[3] > click.pos[1] > self.button_exitRect[1]:
+                    self.screenSurface.blit(self.textures['exit_button_hovered'], self.button_exitRect)
+                else:
+                    self.screenSurface.blit(self.textures['exit_button'], self.button_exitRect)
+            if self.playing == 'Menu' and click.type == pygame.MOUSEBUTTONDOWN and click.button == 1:
+                if self.button_exitRect[0] + self.button_exitRect[2] > click.pos[0] > self.button_exitRect[0] and \
+                    self.button_exitRect[1] + self.button_exitRect[3] > click.pos[1] > self.button_exitRect[1]:
+                        pygame.quit()
+                        exit()
+
+            # Button "Choose Animal"
+            if self.playing == 'Menu' and click.type == pygame.MOUSEMOTION:
+                if self.button_choose_animalRect[0] + self.button_choose_animalRect[2] > click.pos[0] > self.button_choose_animalRect[0] and \
+                    self.button_choose_animalRect[1] + self.button_choose_animalRect[3] > click.pos[1] > self.button_choose_animalRect[1]:
+                    self.screenSurface.blit(self.textures['choose_animal_button_hovered'], self.button_choose_animalRect)
+                else:
+                    self.screenSurface.blit(self.textures['choose_animal_button'], self.button_choose_animalRect)
+            if self.playing == 'Menu' and click.type == pygame.MOUSEBUTTONDOWN and click.button == 1:
+                if self.button_choose_animalRect[0] + self.button_choose_animalRect[2] > click.pos[0] > self.button_choose_animalRect[0] and \
+                    self.button_choose_animalRect[1] + self.button_choose_animalRect[3] > click.pos[1] > self.button_choose_animalRect[1]:
+                        self.choose_animal_menu()
+                        self.playing = 'Choose Animal'
+
+            # Choose Animal Menu
+            if self.playing == 'Choose Animal':
+                if click.type == pygame.MOUSEMOTION:
+                    if self.button_backRect[0] + self.button_backRect[2] > click.pos[0] > self.button_backRect[0] and \
+                        self.button_backRect[1] + self.button_backRect[3] > click.pos[1] > self.button_backRect[1]:
+                        self.screenSurface.blit(self.textures['back_button_hovered'], self.button_backRect)
+                    else:
+                        self.screenSurface.blit(self.textures['back_button'], self.button_backRect)
+                if click.type == pygame.MOUSEBUTTONDOWN and click.button == 1:
+                    if self.button_backRect[0] + self.button_backRect[2] > click.pos[0] > self.button_backRect[0] and \
+                        self.button_backRect[1] + self.button_backRect[3] > click.pos[1] > self.button_backRect[1]:
+                            self.main_menu()
+                            self.playing = 'Menu'
+                if click.type == pygame.KEYDOWN:
+                    if click.key == pygame.K_LEFT:
+                        self.choosen_character = self.characters_list[self.characters_list.index(self.choosen_character) - 1]
+                        self.choose_animal_menu()
+                    if click.key == pygame.K_RIGHT:
+                        if len(self.characters_list) <= self.characters_list.index(self.choosen_character) + 1:
+                            self.choosen_character = self.characters_list[0]
+                            self.choose_animal_menu()
+                        else:
+                            self.choosen_character = self.characters_list[self.characters_list.index(self.choosen_character) + 1]
+                            self.choose_animal_menu()
+
+            # Game Over "Click any button  to restart"
+            if self.playing == 'Game Over':
+                if click.type == pygame.KEYDOWN:
+                    self.main_menu()
+                    self.window.update()
+                    self.playing = 'Menu'
+
+    def start(self):
+        # Find center of screen with player sprite in it
+        self.screenRect = pygame.Rect(level.start_pos[0] - (self.window_width / 2),
+                                      level.start_pos[1] - (self.window_height / 2), self.window_width, self.window_height)
+        # Choosen character
+        self.load_characters()
+        self.player = self.characters_dict[self.choosen_character]
+
+    def redraw_screen(self):
+        self.screen_scroll()
+        self.screenSurface.blit(self.textures['bg'], (0, 0))  # draw bg on screenSurface
+        # self.screenSurface.blit(self.textures['bg'], (self.player.Rect_on_screen[0], self.player.Rect_on_screen[1]), area=self.player.Rect_on_screen)  # remove old player sprite
+        self.player.Rect.move_ip(self.player.speed[0], self.player.speed[1])  # new player sprite coords
+        self.screenSurface.blit(self.textures[self.choosen_character], self.player.Rect_on_screen)  # draw player sprite on screenSurface
+        self.screenSurface.blit(level.levelSurface, (0, 0), area=self.screenRect)  # draw part of levelSurface on screenSurface
+
+    def screen_scroll(self): # Move screen
+        if self.player.speed[0] > 0 and self.player.Rect_on_screen[0] + self.player.Rect_on_screen[2] > (self.window_width - 300):
+            self.screenRect[0] += self.player.speed[0]
+        elif self.player.speed[0] < 0 and self.player.Rect_on_screen[0] < 300:
+            self.screenRect[0] += self.player.speed[0]
+        if self.player.speed[1] < 0 and self.player.Rect_on_screen[1] < 200:
+            self.screenRect[1] += self.player.speed[1]
+        elif self.screenRect[1] + self.screenRect[3] + self.player.speed[1] < level.levelSurface_height:
+            if self.player.speed[1] > 0 and self.player.Rect_on_screen[1] > (self.window_height - 200):
+                self.screenRect[1] += self.player.speed[1]
 
 
 class Sprite:
-    def __init__(self):
-        self.coords = None
-        self.speed = None
-        self.size = None
-        self.on_ground = None
+    def __init__(self, texture, jump_power, gravity, position):
+        self.Rect = pygame.Surface.get_rect(texture, bottomleft=position)
+        self.coords = None # [top, left, bottom, right]
+        self.speed = [0, 0] # speed = [x, y]
+        self.jump_power = jump_power
+        self.gravity = gravity
+        self.on_ground = True
+        self.tile_on_which_stand = None
 
-    def move(self):
-        pass
+    def find_tile_on_which_stand(self, tiles):
+        for tile in tiles:
+            if self.Rect[1] + self.Rect[3] == tile[1] and tile[0] < self.Rect[0] < tile[2]:
+                tile_on_which_stand = tile
+                return tile_on_which_stand
 
-    def collision_line_y(self, sprite, speed, tile):
-        if tile[1] < sprite[1] + speed[1] < tile[3]:  # within tile y top
-            if sprite[0] + speed[0] < tile[2] and sprite[2] + speed[0] > tile[0]:
+    def collision_check(self, tiles):
+        for tile in tiles: # tile[top, left, bottom, right]
+            # Check collision only if any corner of tile may be near player
+            if self.speed[0] > 0:
+                if self.Rect[0] + (self.Rect[2] * 2) > tile[0] and \
+                   tile[1] < self.coords[1] < tile[3] or tile[1] < self.coords[3] < tile[3] or \
+                   (self.coords[1] <= tile[1] and self.coords[3] >= tile[3]):
+                    self.collision_line_x(tile)
+            if self.speed[0] < 0:
+                if self.Rect[0] - self.Rect[2] < tile[2] and \
+                   tile[1] < self.coords[1] < tile[3] or tile[1] < self.coords[3] < tile[3] or \
+                   (self.coords[1] <= tile[1] and self.coords[3] >= tile[3]):
+                    self.collision_line_x(tile)
+            if self.Rect[0] > self.tile_on_which_stand[2] or self.Rect[0] + self.Rect[2] < self.tile_on_which_stand[0]:
+                self.on_ground = False
+            if self.on_ground == False:
+                self.collision_line_y(tile)
+
+    def collision_line_y(self, tile):
+        if tile[1] < self.coords[1] + self.speed[1] < tile[3]:  # within tile y top
+            if self.coords[0] + self.speed[0] < tile[2] and self.coords[2] + self.speed[0] > tile[0]:
                 self.speed[1] = 0
-        if tile[1] < sprite[3] + speed[1] < tile[3]:  # within tile y bottom
-            if sprite[0] + speed[0] < tile[2] and sprite[2] + speed[0] > tile[0]:
+                self.Rect.move_ip(0, tile[3] - self.coords[1])
+        if tile[1] < self.coords[3] + self.speed[1] < tile[3]:  # within tile y bottom
+            if self.coords[0] + self.speed[0] < tile[2] and self.coords[2] + self.speed[0] > tile[0]:
                 self.on_ground = True
                 self.speed[1] = 0
-            if self.speed[1] > 0:
-                self.on_ground = False
+                self.Rect.move_ip(0, tile[1] - self.coords[3])
+                self.tile_on_which_stand = tile
 
-    def collision_line_x(self, sprite, speed, tile):
-        if tile[0] < sprite[2] + speed[0] < tile[2] or tile[0] < sprite[0] + speed[0] < tile[2]:  # within tile x
-            if tile[1] < sprite[1] < tile[3] or tile[1] < sprite[3] < tile[3] or \
-            (sprite[1] <= tile[1] and sprite[3] >= tile[3]):  #
-                self.speed[0] = 0
-
-    def collision_check(self, sprite, speed, tiles):
-        for tile in tiles:
-            self.collision_line_x(sprite, speed, tile)
-            self.collision_line_y(sprite, speed, tile)
+    def collision_line_x(self, tile):
+        # If no = then bug
+        if tile[0] <= self.coords[2] + self.speed[0] <= tile[2] or tile[0] <= self.coords[0] + self.speed[0] <=  tile[2]:  # within tile x
+            self.speed[0] = 0
 
 
-class Pig(Sprite):
-    def __init__(self):
-        super().__init__()
-        self.speed = [0, 0]  # speed = [x, y]
-        self.gravity = 1
-        self.pigSurface = pygame.image.load('sprites/Pig1.0.png').convert_alpha()
-        self.pigRect = pygame.Surface.get_rect(self.pigSurface, bottomleft=(300, 600))
-        self.size = self.pigSurface.get_size()
-        game.playSurface.blit(self.pigSurface, self.pigRect)
+class PlayableCharacter(Sprite):
+    def __init__(self, texture, jump_power, gravity, start_pos, max_speed):
+        super().__init__(texture, jump_power, gravity, start_pos)
+        self.max_speed = max_speed
+        self.Rect_on_screen = None
+        self.tile_on_which_stand = self.find_tile_on_which_stand(level.mergedtiles_group)
+        self.coords = [self.Rect[0], self.Rect[1], self.Rect[0] + self.Rect[2], self.Rect[1] + self.Rect[3]]
 
     def move(self):
-        self.coords = [self.pigRect[0], self.pigRect[1], self.pigRect[0] + self.size[0], self.pigRect[1] + self.size[1]]
+        self.coords = [self.Rect[0], self.Rect[1], self.Rect[0] + self.Rect[2], self.Rect[1] + self.Rect[3]]
+        # Player sprite coords on screen (within window_width and window_height)
+        self.Rect_on_screen = pygame.Rect(self.Rect[0] - game.screenRect[0], self.Rect[1] - game.screenRect[1],
+                                          self.Rect[2], self.Rect[3])
         keys = pygame.key.get_pressed()
-
         # Increase speed
-        if self.within_right_border():
-            if keys[pygame.K_RIGHT] and self.speed[0] < 10:
-                self.speed[0] += 1
-        if self.within_left_border():
-            if keys[pygame.K_LEFT] and self.speed[0] > -10:
-                self.speed[0] -= 1
+        if keys[pygame.K_RIGHT] and self.speed[0] < self.max_speed:
+            self.speed[0] += 1
+        if keys[pygame.K_LEFT] and self.speed[0] > -self.max_speed:
+            self.speed[0] -= 1
         if keys[pygame.K_SPACE] and self.on_ground == True:
             self.on_ground = False
-            self.speed[1] = -15
+            self.speed[1] = self.jump_power
         # Decrease speed
         if not keys[pygame.K_RIGHT] and not keys[pygame.K_LEFT]:
             if self.speed[0] > 0:
                 self.speed[0] -= 1
             if self.speed[0] < 0:
                 self.speed[0] += 1
-        if not keys[pygame.K_SPACE] or self.on_ground == False:
+        # Gravity
+        if self.speed[1] + self.gravity < 32 and self.on_ground == False: # 32 - Falling speed can't be more than 32
             self.speed[1] += self.gravity
 
-        self.collision_check(self.coords, self.speed, level.mergedtiles_group)
-        game.playSurface.blit(game.bg, (self.pigRect[0], self.pigRect[1]), area=self.pigRect)
-        self.pigRect.move_ip(self.speed[0], self.speed[1])
-        game.playSurface.blit(self.pigSurface, self.pigRect)
-
-    def within_right_border(self):
-        if self.pigRect[0] + self.pigRect[2] + self.speed[0] + 1 > game.window_width:
-            self.speed[0] = 0
-            return False
-        return True
-
-    def within_left_border(self):
-        if self.pigRect[0] + self.speed[0] < 0:
-            self.speed[0] = 0
-            return False
-        return True
+        self.collision_check(level.mergedtiles_group)
 
 
 class MapBuilder:
     def __init__(self):
         self.tile_size = 32  # tile = square
-        self.tileSurface = pygame.image.load('sprites/ground.png').convert()
         self.x, self.y = 0, 0
+        self.start_pos = []
         self.map_loading()
 
     def map_loading(self):
         self.tiles_group = []
         self.mergedtiles_group = []
         self.add_tile = []
-        map1 = ['0',
-                '0',
-                '0',
-                '0',
-                '0',
-                '000000000000000000000000000011111',
-                '000000000111111000000000000011111',
-                '0',
-                '0',
-                '0',
-                '0',
-                '0001100000000000000000000000000000000011',
-                '0',
-                '0001100000000000000000000000000000000011',
-                '0001100000000000000000000000000000000111',
-                '00000000000000000000000000000000000001',
-                '0000000000000001111100000000000000001',
-                '0001100000000000000000000001000000010011',
-                '0000001000000000000000000001',
-                '0000001000000000000000000001',
-                '0000001000000000000000000001011',
-                '0001101000000000010000000001000000000011',
-                '0001101000000000000000000001000000000011',
-                '1111111111111111111111111111111111111111']
-        for row in map1:
+
+        # Load level form json file
+        with open('level.json', 'r') as level_json:
+            level = load(level_json)
+            level = level['level']
+
+        for row in level:
             self.x = 0
             for tile in row:
                 if tile == '0':
@@ -188,7 +354,23 @@ class MapBuilder:
                     self.add_tile = [self.x, self.y, self.x + self.tile_size, self.y + self.tile_size]
                     self.tiles_group.append(self.add_tile)
                     self.x += self.tile_size
+                elif tile == 'S':  # S - spawntile for player
+                    self.start_pos = [self.x, self.y]
+                    self.add_tile = [self.x, self.y, self.x + self.tile_size, self.y + self.tile_size]
+                    self.tiles_group.append(self.add_tile)
+                    self.x += self.tile_size
             self.y += self.tile_size
+
+        #  Set levelSurface
+        biggest = ''
+        for row in level:
+            if len(row) > len(biggest):
+                biggest = row
+        self.levelSurface_width = len(biggest) * 32
+        self.levelSurface_height = len(level) * 32
+        self.levelSurface = pygame.Surface((self.levelSurface_width, self.levelSurface_height))  # +15mb ram (depends by level size)
+        self.levelSurface.set_colorkey([0, 0, 0])
+
         self.map_drawing()
         self.to_merge_tiles_row = []
         self.tiles_group_merging = self.tiles_group[:]
@@ -196,8 +378,8 @@ class MapBuilder:
 
     def map_drawing(self):
         for tile in self.tiles_group:
-            self.tileRect = pygame.Surface.get_rect(self.tileSurface, topleft=(tile[0], tile[1]))
-            game.playSurface.blit(self.tileSurface, self.tileRect)
+            self.tileRect = pygame.Surface.get_rect(game.textures['tile'], topleft=(tile[0], tile[1]))
+            self.levelSurface.blit(game.textures['tile'], self.tileRect)
 
     def merge_tiles_row(self, tiles):
         if tiles == []:
@@ -226,9 +408,10 @@ class MapBuilder:
             tiles.pop(0)
             self.merge_tiles_column(tiles)
 
-game = Game()
+# Create window
+game = MainGame()
+# Load level
 level = MapBuilder()
-pig = Pig()
-
 # Start
+game.load_characters()
 game.mainloop()
